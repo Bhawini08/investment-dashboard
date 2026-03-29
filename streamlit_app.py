@@ -25,6 +25,10 @@ st.markdown("---")
 # ── Sidebar controls ──────────────────────────────────────────────────────────
 st.sidebar.header("⚙️ Parameters")
 
+# Date inputs FIRST — needed for ticker validation below
+start_date = st.sidebar.date_input("Start Date", value=pd.to_datetime("2015-01-01"))
+end_date   = st.sidebar.date_input("End Date",   value=pd.to_datetime("2024-12-31"))
+
 st.sidebar.markdown("**Asset Universe**")
 st.sidebar.caption("Enter any tickers available on Yahoo Finance, separated by commas. Examples: AAPL, MSFT, TSLA, SPY, GLD, BTC-USD")
 
@@ -74,9 +78,6 @@ else:
         selected_assets = []
     else:
         st.sidebar.success(f"{len(selected_assets)} valid tickers: {', '.join(selected_assets)}")
-
-start_date = st.sidebar.date_input("Start Date", value=pd.to_datetime("2015-01-01"))
-end_date   = st.sidebar.date_input("End Date",   value=pd.to_datetime("2024-12-31"))
 
 rf_rate = st.sidebar.slider(
     "Risk-Free Rate (%)", min_value=0.0, max_value=6.0, value=2.0, step=0.1
