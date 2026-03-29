@@ -25,13 +25,55 @@ st.markdown("---")
 # ── Sidebar controls ──────────────────────────────────────────────────────────
 st.sidebar.header("⚙️ Parameters")
 
-ALL_ETFS = ["XLK", "XLF", "XLE", "XLV", "XLI", "XLP", "XLU", "TLT", "GLD", "SHY"]
+st.sidebar.markdown("**Asset Universe**")
+st.sidebar.caption("Enter any tickers available on Yahoo Finance, separated by commas. Examples: AAPL, MSFT, TSLA, SPY, GLD, BTC-USD")
 
-selected_assets = st.sidebar.multiselect(
-    "Asset Universe",
-    options=ALL_ETFS,
-    default=ALL_ETFS
+raw_input = st.sidebar.text_area(
+    "Tickers",
+    value="XLK, XLF, XLE, XLV, XLI, XLP, XLU, TLT, GLD, SHY",
+    height=100,
+    placeholder="AAPL, MSFT, GOOGL, AMZN, TSLA, GLD, TLT"
 )
+
+# Parse and validate tickers
+def parse_tickers(raw):
+    return [t.strip().upper() for t in raw.replace("\n", ",").split(",") if t.strip()]
+
+raw_tickers = parse_tickers(raw_input)
+
+@st.cache_data(show_spinner=False)
+def validate_tickers(tickers, start, end):
+    valid, invalid = [], []
+    for t in tickers:
+        try:
+            df = yf.download(t, start=start, end=end,
+                             auto_adjust=True, progress=False)
+            if df.empty or len(df) < 60:
+                invalid.append(t)
+            else:
+                valid.append(t)
+        except Exception:
+            invalid.append(t)
+    return valid, invalid
+
+if len(raw_tickers) < 2:
+    st.sidebar.error("Enter at least 2 tickers.")
+    selected_assets = []
+elif len(raw_tickers) > 20:
+    st.sidebar.error("Maximum 20 tickers at a time.")
+    selected_assets = []
+else:
+    with st.spinner("Validating tickers..."):
+        selected_assets, invalid_tickers = validate_tickers(
+            tuple(raw_tickers), str(start_date), str(end_date)
+        )
+    if invalid_tickers:
+        st.sidebar.warning(f"Could not find data for: {', '.join(invalid_tickers)}. They will be skipped.")
+    if len(selected_assets) < 2:
+        st.sidebar.error("Not enough valid tickers. Please check your input.")
+        selected_assets = []
+    else:
+        st.sidebar.success(f"{len(selected_assets)} valid tickers: {', '.join(selected_assets)}")
 
 start_date = st.sidebar.date_input("Start Date", value=pd.to_datetime("2015-01-01"))
 end_date   = st.sidebar.date_input("End Date",   value=pd.to_datetime("2024-12-31"))
@@ -50,11 +92,18 @@ st.sidebar.markdown("*Data: Yahoo Finance*")
 
 # ── Validation ────────────────────────────────────────────────────────────────
 if len(selected_assets) < 2:
-    st.warning("Please select at least 2 assets.")
     st.stop()
 
 if not run_btn:
-    st.info("👈 Configure parameters in the sidebar, then click **Run Optimization** to start.")
+    st.info("👈 Enter any tickers in the sidebar (stocks, ETFs, crypto), configure parameters, then click **Run Optimization**.")
+    st.markdown("""
+    **Example universes to try:**
+    - **Mag 7:** AAPL, MSFT, GOOGL, AMZN, NVDA, META, TSLA
+    - **Sector ETFs:** XLK, XLF, XLE, XLV, XLI, XLP, XLU, TLT, GLD, SHY
+    - **Global macro:** SPY, EFA, EEM, TLT, GLD, DJP, UUP
+    - **Crypto + equities:** BTC-USD, ETH-USD, AAPL, MSFT, GLD
+    - **Your own mix:** any valid Yahoo Finance ticker
+    """)
     st.stop()
 
 # ── Data fetch ────────────────────────────────────────────────────────────────
